@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Palo Alto Weather</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --glass: rgba(255,255,255,0.08);
+      --glass-border: rgba(255,255,255,0.18);
+      --text: #ffffff;
+      --subtext: rgba(255,255,255,0.65);
+      --accent: #60d0f0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f2027 0%, #203a43 40%, #2c5364 100%);
+      color: var(--text);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.35;
+      animation: float 12s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob1 { width: 520px; height: 520px; background: #00b4d8; top: -120px; left: -100px; animation-delay: 0s; }
+    .blob2 { width: 400px; height: 400px; background: #7b2ff7; bottom: -80px; right: -80px; animation-delay: -4s; }
+    .blob3 { width: 300px; height: 300px; background: #06d6a0; top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: -8s; }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(30px,-20px) scale(1.05); }
+      66% { transform: translate(-20px,30px) scale(0.95); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .location-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      margin-bottom: 14px;
+      backdrop-filter: blur(10px);
+    }
+    .location-pill svg { width: 14px; height: 14px; }
+    .site-title {
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(90deg, #ffffff 30%, #60d0f0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .last-updated {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--subtext);
+      letter-spacing: 0.03em;
+    }
+
+    /* Glass card base */
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 28px;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    /* Hero current weather */
+    .hero-card {
+      padding: 44px 36px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+    .hero-left {}
+    .temp-display {
+      font-size: clamp(5rem, 16vw, 9rem);
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      background: linear-gradient(160deg, #ffffff 50%, #60d0f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .temp-unit-toggle {
+      display: inline-flex;
+      background: rgba(255,255,255,0.1);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .unit-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--subtext);
+    }
+    .unit-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    .condition-label {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-top: 10px;
+      color: #fff;
+    }
+    .feels-like {
+      font-size: 0.9rem;
+      color: var(--subtext);
+      margin-top: 4px;
+    }
+
+    .hero-right {
+      text-align: center;
+    }
+    .weather-icon-big {
+      font-size: 8rem;
+      line-height: 1;
+      filter: drop-shadow(0 0 30px rgba(96,208,240,0.6));
+      animation: sway 4s ease-in-out infinite;
+    }
+    @keyframes sway {
+      0%,100% { transform: rotate(-5deg) scale(1); }
+      50% { transform: rotate(5deg) scale(1.07); }
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .stat-icon {
+      font-size: 1.6rem;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--subtext);
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .stat-sub {
+      font-size: 0.78rem;
+      color: var(--subtext);
+    }
+
+    /* Forecast */
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .forecast-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+    }
+    .forecast-day {
+      padding: 18px 12px;
+      text-align: center;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: background 0.2s;
+    }
+    .forecast-day:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .forecast-day.today {
+      background: linear-gradient(135deg, rgba(96,208,240,0.2), rgba(123,47,247,0.2));
+      border-color: var(--accent);
+    }
+    .fday-name {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--subtext);
+      margin-bottom: 8px;
+    }
+    .fday-icon { font-size: 2rem; margin-bottom: 8px; }
+    .fday-high { font-size: 1.1rem; font-weight: 700; }
+    .fday-low { font-size: 0.85rem; color: var(--subtext); margin-top: 2px; }
+    .fday-precip { font-size: 0.72rem; color: #60d0f0; margin-top: 6px; }
+
+    /* Hourly */
+    .hourly-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+    .hourly-scroll::-webkit-scrollbar { height: 4px; }
+    .hourly-scroll::-webkit-scrollbar-track { background: transparent; }
+    .hourly-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+    .hour-item {
+      flex: 0 0 72px;
+      text-align: center;
+      padding: 14px 6px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      transition: background 0.2s;
+    }
+    .hour-item:hover { background: rgba(255,255,255,0.1); }
+    .hour-item.now {
+      background: linear-gradient(160deg, rgba(96,208,240,0.25), rgba(123,47,247,0.2));
+      border-color: var(--accent);
+    }
+    .hour-time { font-size: 0.7rem; font-weight: 600; color: var(--subtext); }
+    .hour-icon { font-size: 1.4rem; margin: 6px 0; }
+    .hour-temp { font-size: 0.95rem; font-weight: 700; }
+
+    /* Air quality */
+    .aqi-bar-wrap { margin-top: 12px; }
+    .aqi-bar-bg {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #06d6a0, #ffd166, #ef476f);
+      position: relative;
+      margin-bottom: 6px;
+    }
+    .aqi-pointer {
+      position: absolute;
+      top: -5px;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      border: 3px solid #0f2027;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px rgba(255,255,255,0.5);
+      transition: left 1s ease;
+    }
+    .aqi-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--subtext);
+      margin-top: 4px;
+    }
+
+    /* Sun times */
+    .sun-arc-wrap {
+      position: relative;
+      height: 90px;
+      margin: 16px 0 10px;
+      overflow: visible;
+    }
+    .sun-arc-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+    /* Loading state */
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--subtext);
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      text-align: center;
+      padding: 20px;
+      background: rgba(239,71,111,0.15);
+      border: 1px solid rgba(239,71,111,0.3);
+      border-radius: 16px;
+      font-size: 0.9rem;
+      color: #ef476f;
+      margin-bottom: 20px;
+    }
+
+    /* Wind direction arrow */
+    .wind-arrow {
+      display: inline-block;
+      font-size: 1.2rem;
+      transition: transform 0.5s;
+    }
+
+    /* UV index badge */
+    .uv-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 0.75rem;
+      color: var(--subtext);
+      opacity: 0.7;
+    }
+
+    @media (max-width: 600px) {
+      .hero-card { flex-direction: column; text-align: center; }
+      .hero-right { order: -1; }
+      .weather-icon-big { font-size: 5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background blobs -->
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+
+  <div class="container">
+    <header>
+      <div class="location-pill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <circle cx="12" cy="9" r="2.5"/>
+        </svg>
+        Palo Alto, California
+      </div>
+      <h1 class="site-title">Live Weather</h1>
+      <p class="last-updated" id="lastUpdated">Loading...</p>
+    </header>
+
+    <div id="errorBanner" class="error-msg" style="display:none;"></div>
+
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <p>Fetching live conditions...</p>
+    </div>
+
+    <div id="weatherContent" style="display:none;">
+
+      <!-- Hero -->
+      <div class="card hero-card" id="heroBg">
+        <div class="hero-left">
+          <div class="temp-display" id="tempDisplay">--</div>
+          <div class="temp-unit-toggle">
+            <button class="unit-btn active" id="btnF" onclick="setUnit('F')">�F</button>
+            <button class="unit-btn" id="btnC" onclick="setUnit('C')">�C</button>
+          </div>
+          <div class="condition-label" id="conditionLabel">--</div>
+          <div class="feels-like" id="feelsLike">Feels like --</div>
+        </div>
+        <div class="hero-right">
+          <div class="weather-icon-big" id="heroIcon"><</div>
+        </div>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="stats-grid">
+        <div class="card stat-card">
+          <span class="stat-icon">=</span>
+          <span class="stat-label">Humidity</span>
+          <span class="stat-value" id="humidity">--</span>
+          <span class="stat-sub" id="dewpoint">Dew point --</span>
+        </div>
+        <div class="card stat-card">
+          <span class="stat-icon">=</span>
+          <span class="stat-label">Wind</span>
+          <span class="stat-value" id="windSpeed">--</span>
+          <span class="stat-sub" id="windDir">--</span>
+        </div>
+        <div class="card stat-card">
+          <span class="stat-icon"><</span>
+          <span class="stat-label">Pressure</span>
+          <span class="stat-value" id="pressure">--</span>
+          <span class="stat-sub">hPa</span>
+        </div>
+        <div class="card stat-card">
+          <span class="stat-icon">
